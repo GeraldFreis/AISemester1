@@ -1,6 +1,6 @@
 import sys
 from collections import deque
-
+import copy
 
 given_map_file = sys.argv[1]
 algo = sys.argv[2]
@@ -63,15 +63,16 @@ def bfs(n: int,
     rows = n; cols = m;
     counter = 0
     while queue:
-        # if(counter == pow(2, n*m)): break;
-        # counter += 1
+        if(counter == 40): break;
+        
         row, col, cost, path = queue.popleft()
         # print((row, col, cost))
         if row == end[0] and col == end[1]:
             if cost < min_cost:
                 min_cost = cost
                 min_path = path
-                # print(min_cost)
+            else:
+                counter += 1
             continue
         
         current_possibles = list()
@@ -95,7 +96,52 @@ def bfs(n: int,
     else:
         print("null")
 
+def ucs(n: int,
+        m: int,
+        start: (int, int),
+        end: (int, int),
+        mapple: list)->None:
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+    node = start
+    frontier = deque([(node, mapple[node[0]][node[1]], list([node]))]) # [node, cost, path_list]
+    explored = list(); path = list()
+    while frontier:
+        frontier = deque(sorted(frontier, key=lambda x:int(x[1])))
+        node, cost, path_list = frontier.popleft()
+        if(node[0] == end[0] and node[1] == end[1]):
+            path = path_list
+            break
+        
+        explored.append(node)
 
+        for d in directions:
+            child_row = node[0] + d[0]; child_col = node[1]+d[1]
+            child = (child_row, child_col)
+
+            child_path = copy.deepcopy(path_list); 
+
+            if(child not in explored and child not in frontier and child not in child_path and child_row >= 0 and child_col >= 0 and child_row < n and child_col < m and mapple[child_row][child_col] != 'X'):
+                child_path.append(child)
+                frontier.append((child,int(mapple[child_row][child_col]), child_path))
+
+            
+    if(len(path) >= 1):
+        for r, c in path:
+            mapple[r][c] = '*'
+
+        # Print the grid with the path
+        for row in mapple:
+            print(' '.join(map(str, row)))
+    else:
+        print("null")
+
+def astar(n: int,
+        m: int,
+        start: (int, int),
+        end: (int, int),
+        mapple: list,
+        heuristic: str)->None:
+    
 
 
 n,m, start, end, given_map = reading_map(given_map_file)
