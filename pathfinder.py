@@ -134,7 +134,11 @@ def ucs(n: int,
 
             child_path = copy.deepcopy(path_list);  # making a deep copy because python does some weird pointer problems
 
-            if(child not in visited and child not in frontier and child not in child_path and child_row >= 0 and child_col >= 0 and child_row < n and child_col < m and mapple[child_row][child_col] != 'X'):
+            # if(child not in visited and child not in frontier and child not in child_path and child_row >= 0 and child_col >= 0 and child_row < n and child_col < m and mapple[child_row][child_col] != 'X'):
+            #     # if not visited and not in the frontier and in the map and not an obstruction we want to visit it
+            #     child_path.append(child)
+            #     frontier.append((child,int(mapple[child_row][child_col]), child_path))
+            if(child not in visited and child not in frontier and child_row >= 0 and child_col >= 0 and child_row < n and child_col < m and mapple[child_row][child_col] != 'X'):
                 # if not visited and not in the frontier and in the map and not an obstruction we want to visit it
                 child_path.append(child)
                 frontier.append((child,int(mapple[child_row][child_col]), child_path))
