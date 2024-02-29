@@ -30,6 +30,7 @@ def astar(n: int,
         mapple: list,
         heuristic: str)->None:...
 
+
 """Function Implementations"""
 
 def reading_map(filename: str)->tuple:
@@ -42,8 +43,10 @@ def reading_map(filename: str)->tuple:
 
         dest_row, dest_col = map(int, f.readline().split()) # third line is goal row and col
         goal = (dest_row-1, dest_col-1)
-
-        grid = [list(map(str, f.readline().split())) for _ in range(rows)] # making a grid of lines of rows and reading them all in
+        grid = list()
+        # grid = [list(map(str, f.readline().split())) for _ in range(rows)] # making a grid of lines of rows and reading them all in
+        for _ in range(rows):
+            grid.append(list(map(str, f.readline().split())))
 
     return (rows, cols, start, goal, grid) # return (n, m, start tuple, end tuple, grid)
 
@@ -100,7 +103,13 @@ def bfs(n: int,
 
         # Print the grid with the path
         for row in mapple:
-            print(' '.join(map(str, row)))
+            row_str = str()
+            for idx, c in enumerate(row):
+                if(idx != len(row)-1):
+                    row_str += str(c) + " "
+                else:
+                    row_str += str(c) 
+            print(row_str)
 
     else: # if we do not have a path, then we think there is none
         print("null")
@@ -150,17 +159,23 @@ def ucs(n: int,
 
         # Print the grid with the path
         for row in mapple:
-            print(' '.join(map(str, row)))
+            row_str = str()
+            for idx, c in enumerate(row):
+                if(idx != len(row)-1):
+                    row_str += str(c) + " "
+                else:
+                    row_str += str(c) 
+            print(row_str)
     else:
         print("null")
 
 from math import sqrt
 def calculate_euclidean(node_1: tuple, node_2: tuple)->int:
 
-    return sqrt(pow(node_1[0]-node_2[0], 2) + pow(node_1[1]-node_2[1], 2))
+    return sqrt(pow(int(node_1[0])-int(node_2[0]), 2) + pow(int(node_1[1])-int(node_2[1]), 2))
 
 def calculate_manhatten(node_1: tuple, node_2: tuple)->int:
-    return abs(node_1[0]-node_2[0]) + abs(node_1[1] - node_2[1])
+    return abs(int(node_1[0])-int(node_2[0])) + abs(int(node_1[1]) - int(node_2[1]))
 
 def astar(n: int,
         m: int,
@@ -169,21 +184,20 @@ def astar(n: int,
         mapple: list,
         heuristic: str)->None:
 
-    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-    open_set = list([(start, mapple[start[0]][start[1]], list([start]))]) # making a set to hold what we have visited but not fully explored
-    closed_set = list() # making a set to hold all those fully explored
-    path = list()
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)] # up, down, left and right in terms of the grid
+
+    open_set = list([(start, mapple[start[0]][start[1]], list([start]))]) # making a list to hold what we have visited but not fully explored
+    closed_set = list() # making a list to hold all those fully explored
+    path = list() # the path used by the Algorithm
 
     while open_set: # while there are things in the open_set
-        if(heuristic == "euclidean"):
-            sorted_opens = sorted(open_set, key=lambda x: (int(x[1])+calculate_euclidean(x[0], end) ) ) # sorting because again we want the optimal value
-        else:
-            sorted_opens = sorted(open_set, key=lambda x: (int(x[1])+calculate_manhatten(x[0], end) ) ) # sorting because again we want the optimal value
 
+        sorted_opens = sorted(open_set, key=lambda x: (int(x[1])+calculate_euclidean(x[0], end) if x[1] != 'X' else float('inf') ) ) if heuristic == "euclidean" else  sorted(open_set, key=lambda x: (int(x[1])+calculate_manhatten(x[0], end) ) )
         # in this case the optimal value comes from the heuristic + cost
         node, cost, current_path = sorted_opens[0] # getting the best value in the top & cleaning it from the set
 
         current_path.append(node)
+        closed_set.append(node)
 
         if(node[0] == end[0] and node[1] == end[1]): # if we are at the end point we want the best path
             path = current_path
@@ -193,19 +207,24 @@ def astar(n: int,
             child_row = node[0] + d[0]; child_col = node[1]+d[1]
             child = (child_row, child_col)
 
-            child_path = copy.deepcopy(current_path);  # deep copy because python has weird management problems
-            if(child_row >= 0 and child_row < n and child_col >= 0 and child_col < m):
+            if(mapple[child_row][child_col] != 'X'):
+                child_g = int(cost) + calculate_euclidean(child, node) if heuristic == "euclidean" else int(cost) + calculate_manhatten(child, node)
+                child_h = calculate_euclidean(child, node) if heuristic == "euclidean" else calculate_manhatten(child, node)
+                child_f = child_g+child_h
+                child_path = copy.deepcopy(current_path);  # deep copy because python has weird management problems
 
-                if(mapple[child_row][child_col] != 'X' and child not in current_path):
-                    if (child in open_set):
-                        if(int(mapple[child_row][child_col]) <= cost): continue;
-                    elif(child in closed_set):
-                        if(int(mapple[child_row][child_col]) <= cost):
-                            continue
-                        open_set.append([child, mapple[child_row][child_col], child_path])
-                        closed_set = [i for i in closed_set if i[0] != child]
-                    else:
-                        open_set.append([child, mapple[child_row][child_col], child_path])
+                if(child_row >= 0 and child_row < n and child_col >= 0 and child_col < m):
+                    if(child not in current_path):
+                        if (child in open_set):
+                            if(int(mapple[child_row][child_col]) <= cost): continue;
+                        elif(child in closed_set):
+                            if(int(mapple[child_row][child_col]) <= cost):
+                                continue
+                            # moving node
+                            open_set.append([child, mapple[child_row][child_col], child_path])
+                            closed_set = [i for i in closed_set if i[0] != child]
+                        else:
+                            open_set.append([child, mapple[child_row][child_col], child_path])
    
     if(len(path) >= 1):
         for r, c in path:
@@ -213,7 +232,13 @@ def astar(n: int,
 
         # Print the grid with the path
         for row in mapple:
-            print(' '.join(map(str, row)))
+            row_str = str()
+            for idx, c in enumerate(row):
+                if(idx != len(row)-1):
+                    row_str += str(c) + " "
+                else:
+                    row_str += str(c) 
+            print(row_str)
     else:
         print("null")
 
