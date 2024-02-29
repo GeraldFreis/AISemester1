@@ -177,6 +177,74 @@ def calculate_euclidean(node_1: tuple, node_2: tuple)->int:
 def calculate_manhatten(node_1: tuple, node_2: tuple)->int:
     return abs(int(node_1[0])-int(node_2[0])) + abs(int(node_1[1]) - int(node_2[1]))
 
+# def astar(n: int,
+#         m: int,
+#         start: (int, int),
+#         end: (int, int),
+#         mapple: list,
+#         heuristic: str)->None:
+
+#     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)] # up, down, left and right in terms of the grid
+
+#     open_set = list([(start, mapple[start[0]][start[1]], list([start]))]) # making a list to hold what we have visited but not fully explored
+#     closed_set = list() # making a list to hold all those fully explored
+#     path = list() # the path used by the Algorithm
+#     counter = 0
+#     while open_set: # while there are things in the open_set
+#         # if(counter >= 2*n*m): break;
+#         # counter +=1 
+#         sorted_opens = sorted(open_set, key=lambda x: (int(x[1])+calculate_euclidean(x[0], end) if x[1] != 'X' else float('inf') ) ) if heuristic == "euclidean" else  sorted(open_set, key=lambda x: (int(x[1])+calculate_manhatten(x[0], end) ) )
+#         # in this case the optimal value comes from the heuristic + cost
+#         node, cost, current_path = sorted_opens[0] # getting the best value in the top & cleaning it from the set
+#         open_set.remove(sorted_opens[0])
+#         cost = int(cost)
+#         current_path.append(node)
+#         closed_set.append(node)
+
+#         if(node[0] == end[0] and node[1] == end[1]): # if we are at the end point we want the best path
+#             path = current_path
+#             break
+        
+#         for d in directions: # for each direction (up, down, left and right)
+#             child_row = node[0] + d[0]; child_col = node[1]+d[1]
+#             child = (child_row, child_col)
+
+#             if(child_row >= 0 and child_row < n and child_col >= 0 and child_col < m and mapple[child_row][child_col] != 'X'):
+#                 child_g = int(cost) + calculate_euclidean(child, node) if heuristic == "euclidean" else int(cost) + calculate_manhatten(child, node)
+#                 child_h = calculate_euclidean(child, node) if heuristic == "euclidean" else calculate_manhatten(child, node)
+#                 child_f = child_g+child_h
+#                 child_path = copy.deepcopy(current_path);  # deep copy because python has weird management problems
+
+                
+#                 if(child not in current_path):
+#                     if (child in open_set):
+#                         if(int(mapple[child_row][child_col]) <= cost): continue;
+#                     elif(child in closed_set):
+#                         if(int(mapple[child_row][child_col]) <= cost):
+#                             continue
+#                         # moving node
+#                         open_set.append([child, mapple[child_row][child_col], child_path])
+#                         closed_set = [i for i in closed_set if i[0] != child]
+#                     else:
+#                         open_set.append([child, mapple[child_row][child_col], child_path])
+   
+#     if(len(path) >= 1):
+#         for r, c in path:
+#             mapple[r][c] = '*'
+
+#         # Print the grid with the path
+#         for row in mapple:
+#             row_str = str()
+#             for idx, c in enumerate(row):
+#                 if(idx != len(row)-1):
+#                     row_str += str(c) + " "
+#                 else:
+#                     row_str += str(c) 
+#             print(row_str)
+#     else:
+#         print("null")
+
+
 def astar(n: int,
         m: int,
         start: (int, int),
@@ -185,48 +253,67 @@ def astar(n: int,
         heuristic: str)->None:
 
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)] # up, down, left and right in terms of the grid
+    dist_to_end = calculate_euclidean(start, end) if heuristic == "euclidean" else calculate_manhatten(start, end)
+    open_set = list([(start, 0, int(mapple[start[0]][start[1]]), dist_to_end, list([start]))]) # making a list to hold what we have visited but not fully explored
+    # open set is: [node, f, g, h, path_thus_far]
 
-    open_set = list([(start, mapple[start[0]][start[1]], list([start]))]) # making a list to hold what we have visited but not fully explored
-    closed_set = list() # making a list to hold all those fully explored
-    path = list() # the path used by the Algorithm
+    closed_set = list() # making a list to hold all those fully explored nodes
+    path = list() # the minimum path used by the Algorithm
     counter = 0
-    while open_set: # while there are things in the open_set
-        if(counter >= 2*n*m): break;
-        counter +=1 
-        sorted_opens = sorted(open_set, key=lambda x: (int(x[1])+calculate_euclidean(x[0], end) if x[1] != 'X' else float('inf') ) ) if heuristic == "euclidean" else  sorted(open_set, key=lambda x: (int(x[1])+calculate_manhatten(x[0], end) ) )
-        # in this case the optimal value comes from the heuristic + cost
-        node, cost, current_path = sorted_opens[0] # getting the best value in the top & cleaning it from the set
+    while open_set:
+        
+        sorted_opens = sorted(open_set, key=lambda x: int(x[2]))
+        node, node_f, node_g, node_h, path_thus_far = sorted_opens[0]
+        open_set.remove(sorted_opens[0])
 
-        current_path.append(node)
-        closed_set.append(node)
+        path_thus_far.append(node)
 
         if(node[0] == end[0] and node[1] == end[1]): # if we are at the end point we want the best path
-            path = current_path
+            path = path_thus_far
             break
         
         for d in directions: # for each direction (up, down, left and right)
             child_row = node[0] + d[0]; child_col = node[1]+d[1]
             child = (child_row, child_col)
-
+            
             if(child_row >= 0 and child_row < n and child_col >= 0 and child_col < m and mapple[child_row][child_col] != 'X'):
-                child_g = int(cost) + calculate_euclidean(child, node) if heuristic == "euclidean" else int(cost) + calculate_manhatten(child, node)
-                child_h = calculate_euclidean(child, node) if heuristic == "euclidean" else calculate_manhatten(child, node)
-                child_f = child_g+child_h
-                child_path = copy.deepcopy(current_path);  # deep copy because python has weird management problems
+                child_cost = int(mapple[child_row][child_col])
 
-                
-                if(child not in current_path):
-                    if (child in open_set):
-                        if(int(mapple[child_row][child_col]) <= cost): continue;
-                    elif(child in closed_set):
-                        if(int(mapple[child_row][child_col]) <= cost):
-                            continue
-                        # moving node
-                        open_set.append([child, mapple[child_row][child_col], child_path])
-                        closed_set = [i for i in closed_set if i[0] != child]
-                    else:
-                        open_set.append([child, mapple[child_row][child_col], child_path])
-   
+                if(child[0] == end[0] and child[1] == end[1]): # if we are at the end point we want the best path
+                    path = path_thus_far
+                    path.append(child)
+                    
+                    open_set = list() # to break loop
+                    break
+
+                else:
+                    child_g = float(node_g + calculate_euclidean(node, child)) if heuristic == "euclidean" else float(node_g+calculate_manhatten(node, child))
+                    child_g += float(child_cost)
+                    child_h = float(calculate_euclidean(child, end)) if heuristic == "euclidean" else float(calculate_manhatten(node, end))
+                    child_f = child_g + child_h
+                    child_g = float(child_cost + float(node_g) + child_h )
+                    child_path = copy.deepcopy(path_thus_far)
+
+                    # if the child is not in the closed list 
+                    if(child not in [i[0] for i in closed_set]):
+                        # if the child is not in the open set we just add it
+                        if(child not in [i[0] for i in open_set]): # if child hasn't been visited
+                            open_set.append((child, child_f, child_g, child_h, child_path))
+                        else: # if child is in open set and not the closed set
+                            existing_child = [i for i in open_set if i[0][0] == child_row and i[0][1] == child_col][0]
+                            # ^ there will be one value in this list so thats why I take index [0]
+                            if(child_g < existing_child[2]): # if child g < previous g we want the better version
+                                open_set.remove(existing_child)
+                                open_set.append((child, child_f, child_g, child_h, child_path))
+                    else: # if child is in closed_set set it cannot be in the open set
+                        existing_child = [i for i in closed_set if i[0][0] == child_row and i[0][1] == child_col][0]
+                        # ^ there will be one value in this list so thats why I take index [0]
+                        if(child_g < existing_child[2]): # if child g < previous g
+                            closed_set.remove(existing_child)
+                            open_set.append((child, child_f, child_g, child_h, child_path))
+        
+        closed_set.append((node, node_f, node_g, node_h, path_thus_far))
+
     if(len(path) >= 1):
         for r, c in path:
             mapple[r][c] = '*'
@@ -241,8 +328,8 @@ def astar(n: int,
                     row_str += str(c) 
             print(row_str)
     else:
-        print("null")
 
+        print("null")
 
 n,m, start, end, given_map = reading_map(given_map_file)
 if(algo == "bfs"): bfs(n, m, start, end, given_map)
