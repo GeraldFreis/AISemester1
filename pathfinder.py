@@ -171,8 +171,7 @@ def ucs(n: int,
 
 from math import sqrt
 def calculate_euclidean(node_1: tuple, node_2: tuple)->int:
-
-    return sqrt(pow(int(node_1[0])-int(node_2[0]), 2) + pow(int(node_1[1])-int(node_2[1]), 2))
+    return sqrt( pow(int(node_1[0])-int(node_2[0]), 2) + pow(int(node_1[1])-int(node_2[1]), 2))
 
 def calculate_manhatten(node_1: tuple, node_2: tuple)->int:
     return abs(int(node_1[0])-int(node_2[0])) + abs(int(node_1[1]) - int(node_2[1]))
@@ -254,7 +253,7 @@ def astar(n: int,
 
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)] # up, down, left and right in terms of the grid
     dist_to_end = calculate_euclidean(start, end) if heuristic == "euclidean" else calculate_manhatten(start, end)
-    open_set = list([(start, 0, int(mapple[start[0]][start[1]]), dist_to_end, list([start]))]) # making a list to hold what we have visited but not fully explored
+    open_set = list([(start, dist_to_end, int(mapple[start[0]][start[1]]), dist_to_end, list([start]))]) # making a list to hold what we have visited but not fully explored
     # open set is: [node, f, g, h, path_thus_far]
 
     closed_set = list() # making a list to hold all those fully explored nodes
@@ -262,21 +261,24 @@ def astar(n: int,
     counter = 0
     while open_set:
         
-        sorted_opens = sorted(open_set, key=lambda x: int(x[2]))
+        sorted_opens = sorted(open_set, key=lambda x: float(x[1])) # trying to minimise cost
         node, node_f, node_g, node_h, path_thus_far = sorted_opens[0]
-        open_set.remove(sorted_opens[0])
+
+        open_set.remove(sorted_opens[0]) # getting rid of value
 
         path_thus_far.append(node)
+        closed_set.append((node, node_f, node_g, node_h, path_thus_far)) # adding to the closed set / visited set
 
         if(node[0] == end[0] and node[1] == end[1]): # if we are at the end point we want the best path
             path = path_thus_far
             break
         
         for d in directions: # for each direction (up, down, left and right)
-            child_row = node[0] + d[0]; child_col = node[1]+d[1]
+            child_row = node[0] + d[0]; child_col = node[1]+d[1] # getting the child node
             child = (child_row, child_col)
             
             if(child_row >= 0 and child_row < n and child_col >= 0 and child_col < m and mapple[child_row][child_col] != 'X'):
+                # if we are within the boundary of the grid and not at an obstruction
                 child_cost = int(mapple[child_row][child_col])
 
                 if(child[0] == end[0] and child[1] == end[1]): # if we are at the end point we want the best path
@@ -287,11 +289,12 @@ def astar(n: int,
                     break
 
                 else:
-                    child_g = float(node_g + calculate_euclidean(node, child)) if heuristic == "euclidean" else float(node_g+calculate_manhatten(node, child))
-                    child_g += float(child_cost)
+                    dif = child_cost - int( mapple[node[0]][node[1]] )
+                    child_g = 1 + dif if dif > 0 else 1 # the elevation gain / loss
+                    child_g += node_g # adding path cost
                     child_h = float(calculate_euclidean(child, end)) if heuristic == "euclidean" else float(calculate_manhatten(node, end))
-                    child_f = child_g + child_h
-                    child_g = float(child_cost + float(node_g) + child_h )
+                    child_f = child_g + child_h 
+
                     child_path = copy.deepcopy(path_thus_far)
 
                     # if the child is not in the closed list 
@@ -305,14 +308,7 @@ def astar(n: int,
                             if(child_g < existing_child[2]): # if child g < previous g we want the better version
                                 open_set.remove(existing_child)
                                 open_set.append((child, child_f, child_g, child_h, child_path))
-                    else: # if child is in closed_set set it cannot be in the open set
-                        existing_child = [i for i in closed_set if i[0][0] == child_row and i[0][1] == child_col][0]
-                        # ^ there will be one value in this list so thats why I take index [0]
-                        if(child_g < existing_child[2]): # if child g < previous g
-                            closed_set.remove(existing_child)
-                            open_set.append((child, child_f, child_g, child_h, child_path))
-        
-        closed_set.append((node, node_f, node_g, node_h, path_thus_far))
+
 
     if(len(path) >= 1):
         for r, c in path:
