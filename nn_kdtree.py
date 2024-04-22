@@ -84,32 +84,41 @@ def build_tree(points: list, depth: int = 0):
         new_node.right = build_tree([p for p in points if p[d] > val], depth+1)
 
         return new_node
-import heapq
 
-def classify_point(root, point: list, heap, i = 0, tiebreaker = 1)->None:
+def classify_point(root, point: list, depth, best_thus_far = None):
     """Here we take a root node (from a KD tree) and a given point (list) and classify it
     based on its 1nn
     """
-    k = 1
-    if root is not None:
-        dist_sq = euclidean_distance(point, root)
-        dx = root.point[i] - point[i]
-        if len(heap) < k:
-            heapq.heappush(heap, (-dist_sq, tiebreaker, root))
-        elif dist_sq < -heap[0][0]:
-            heapq.heappushpop(heap, (-dist_sq, tiebreaker, root))
-        i = (i + 1) % dimensions
-        # Goes into the left branch, then the right branch if needed
-        for b in (dx < 0, dx >= 0)[:1 + (dx * dx < -heap[0][0])]:
-            if(b):
-                classify_point(root.left, point, 
-                    heap, i, (tiebreaker << 1) | b)
-            else:
-                classify_point(root.right, point, 
-                    heap, i, (tiebreaker << 1) | b)
-    if tiebreaker == 1:
-        return [h for h in sorted(heap)][0][2].point[::-1]
+    if root is None: return best_thus_far
 
+    d = depth % dimensions
+
+    dist_sq = euclidean_distance(point, root)
+    dx = (point[d] - root.point[d]) ** 2
+
+    if(best_thus_far != None):
+        best_dist = euclidean_distance(point, best_thus_far)
+    else:
+        best_dist = dist_sq
+        best_thus_far = root
+
+    if(best_dist > dist_sq):
+        best_dist = dist_sq
+        best_thus_far = root
+
+    if point[d] < root.point[d]:
+        next_branch = root.left
+        opp_branch = root.right
+    else:
+        next_branch = root.right
+        opp_branch = root.left
+
+    best_thus_far = classify_point(next_branch, point, depth + 1, best_thus_far)
+
+    if dx < best_dist:
+        best_thus_far = classify_point(opp_branch, point, depth + 1, best_thus_far)
+
+    return best_thus_far
 
 train_file = read_in(train_filename)
 train_root = build_tree(train_file)
@@ -117,10 +126,9 @@ train_root = build_tree(train_file)
 
 
 test_file = read_in(test_filename)
-print(classify_point(train_root, test_file[0], []))
+for i in test_file:
 
-
-
+    print(int(classify_point(train_root, i, 0, None).point[-1]))
 
 
 
