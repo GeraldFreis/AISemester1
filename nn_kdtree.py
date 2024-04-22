@@ -74,7 +74,7 @@ def build_tree(points: list, depth: int = 0):
     else:
         d = depth % dimensions
         points.sort(key=lambda x: x[d])
-        middle = int(len(points) / 2)
+        middle = len(points) // 2
 
         val = points[middle][d]# median value at the d'th dimension
         
