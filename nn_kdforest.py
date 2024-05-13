@@ -1,3 +1,21 @@
+"""
+This file takes in 4 arguments: train test seed depth_list
+seed is the random seed used to get 80% of the dataset randomly sampled and then build a random forest from these values
+depth_list is the set depth of n trees
+    len(depth_list) = n
+"""
+
+import sys
+import csv
+from statistics import median
+from math import ceil, floor
+
+train_filename = sys.argv[1]
+test_filename = sys.argv[2]
+seed = int(sys.argv[3])
+depth_list = list(sys.argv[4])
+n = len(depth_list)
+
 
 # first I need to read in the arguments
 import sys
@@ -126,11 +144,51 @@ def classify_point(root, point: list, depth=0)->tuple:
 train_file = read_in(train_filename)
 train_points = [i[:-1] for i in train_file]
 train_labels = [i[-1] for i in train_file]
-train_root = make_tree(train_points, train_labels)
 
 
+
+import random
+
+
+def new_list(a: list, indices: list)->list:
+    """Takes in a list 'a' and a list of indices and returns a list of all entries of list indices"""
+    return list([a[indice] for indice in indices])
+
+trained_trees = list()
+# for each tree I want a random subsample of the data
+n_prime = int(len(train_points) * 0.8)
+
+from random import sample
+all_indices = [i for i in range(len(train_points))]
+
+
+
+counter = 0
+# generating random trees of depth d
+
+for d in depth_list:
+    # generating a random n_prime subsample of indices
+    random.seed(seed+counter)
+    counter += 1
+
+    subsampled_indices = sample(all_indices, n_prime)
+    # now getting all of those samples in a new list
+    subsampled_list_points = new_list(train_points, subsampled_indices)
+    subsampled_list_labels = new_list(train_labels, subsampled_indices)
+
+    train_root = make_tree(subsampled_list_points, subsampled_list_labels)
+
+    trained_trees.append(train_root)
+
+# now for each point in the test dataset
+from statistics import mode
 
 test_file = read_in(test_filename)
 for i in test_file:
 
-    print(int(classify_point(train_root, i, 0)[1]))
+    # for each random tree in the forst I want its classification and then put them in a list and get the mode
+    all_classifications = list()
+    for root in trained_trees:
+        all_classifications.append(int(classify_point(train_root, i, 0)[1]))
+
+    print(mode(all_classifications))
