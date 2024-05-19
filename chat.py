@@ -115,7 +115,7 @@ for i, (x, y) in enumerate(index_to_map):
     #     # getting number of incorrect directions
         valid_expansion = [1 if (nx, ny) in map_to_index else 0 for (nx, ny) in neighbors ]
         aligned_sensors = [1 if j == observation[x] else 0 for x, j in enumerate(valid_expansion)] # if each position in the observation and adjacent traversible squares align
-        number_of_wrong_sensors = 4-sum(aligned_sensors)
+        number_of_wrong_sensors = sum(aligned_sensors)
         Em[i][n] = ((1-sensor_error_rate) ** (4-number_of_wrong_sensors)) * (sensor_error_rate ** (number_of_wrong_sensors))
 
 # Run Viterbi algorithm
@@ -127,7 +127,8 @@ for t in range(len(observations)):
     map_rep = np.zeros((rows, cols))
     for (x, y), i in map_to_index.items():
         map_rep[x, y] = trellis[i, t]
+        # print(trellis[i])
     maps.append(map_rep)
 
-print(maps[0])
+# print(maps[0])
 np.savez("output.npz", *maps)

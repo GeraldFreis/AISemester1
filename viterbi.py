@@ -2,103 +2,111 @@
 from sys import argv
 input_file = argv[1]
 import numpy as np
+from numpy import ones, zeros
 
+"""Defining the functions I want to use"""
 
-"""Function definitions"""
-def read_in(filename: str)->list:...
+# the typical read in function first as always
+def read_in(filename: str)->tuple:
+    """Reading in the file because hmm maybe that is neccessary lmao"""
+    with open(filename, 'r') as file:
+        file_lines = file.readlines()
+        r, c = map(int, file_lines[0].split())
+        # reading the grid in, idc about readability anymore list comprehension is how i do things now
+        grid = [[c for c in row.strip().split(" ")] for row in file_lines[1:1+r]]
 
-def viterbi_forward(observations_list: list, error_rate: list, grid: list)->None:...
+        n = int(file_lines[1+r])
+        # reading the n observations in as a list of base 2 integers
+        observations = [int(observation, 2) for observation in file_lines[2+r:2+r+n]]
+        error_rate = float(file_lines[2+r+n])
+    
+        return (r, c, grid, n, observations, error_rate)
 
-"""Okay so Now I am going to actually write the functions because I am lazy lol"""
-
-def read_in(filename: str)->list:
-    """Takes filename returns a list of lists
-    Return:
-        List of points ->points are tab separated from the file
+def transition_matrix(mapping_of_grid_to_matrix, mapping_of_matrix_to_grid, K):
+    """Making the transition matrix of the map
+        for each entry in the K x K matrix we have the probability of 1/N where N is the number of adjacent traversible squares
     """
-    with open(filename, 'r') as f:
-        rows, cols = map(int, f.readline().split()) # first line is row, cols
+    Tm = zeros((K, K))
 
-        # now reading in the map
-        grid = list()
+    for i, (x, y) in enumerate(mapping_of_matrix_to_grid): # for each traversible index 
+        # I want to compute their traversible neighbours by checking if they are in the traversible set
+        neighbors = [(x-1, y), (x+1, y), (x, y-1), (x, y+1)]
+        valid_neighbors = [mapping_of_grid_to_matrix[(nx, ny)] for (nx, ny) in neighbors if (nx, ny) in mapping_of_grid_to_matrix]
+        # Tm[x][y] = 1/len(valid_neighbors) if len(valid_neighbors) > 0 else 0
+        # getting the transition matrice
+        for neighbor in valid_neighbors:
+            Tm[i] [neighbor] = 1 / len(valid_neighbors)
+    return Tm
 
-        for _ in range(rows):
-            grid.append(list(map(str, f.readline().split())))
+def emission_matrix(mapping_of_grid_to_matrix, mapping_of_matrix_to_grid, error_rate, K):
+    """Calculates the emission matrix from a mapping of each index to the map and a mapping of each position to an index
+    """
+    Em = zeros((K, 16))
+    for i, (x, y) in enumerate(mapping_of_matrix_to_grid):
+        # for each traversible index I want to get its emission probabilities for each combination of bits
+        for n in range(16):
+            bits = f"{n:04b}"
+            observation = [int(j) for j in str(bits)]
+            neighbors = [(x-1, y), (x+1, y), (x, y-1), (x, y+1)]
+            valid_neighbors = [mapping_of_grid_to_matrix[(nx, ny)] for (nx, ny) in neighbors if (nx, ny) in mapping_of_grid_to_matrix]
+        #     # getting number of incorrect directions
+            valid_expansion = [1 if (nx, ny) in mapping_of_grid_to_matrix else 0 for (nx, ny) in neighbors ]
+            aligned_sensors = [1 if j == observation[x] else 0 for x, j in enumerate(valid_expansion)] # if each position in the observation and adjacent traversible squares align
+            number_of_wrong_sensors = sum(aligned_sensors)
+            Em[i][n] = ((1-error_rate) ** (4-number_of_wrong_sensors)) * (error_rate ** (number_of_wrong_sensors))
+    return Em
+
+def mapping_sets_because_input_grid_is_different_to_trellis_etc(r, c, grid):
+    """For guidance refer to name of function"""
+    map_to_index = {}
+    index_to_map = []
+    for i in range(r):
+        for j in range(c):
+            if grid[i][j] != "X": # if the current square is traversible
+                map_to_index[(i, j)] = len(index_to_map)
+                index_to_map.append((i, j))
+    return (map_to_index, index_to_map)
+
+def viterbi_forward(K, N, pi, Y, Tm, Em):
+    # Initialize the trellis matrix
+    T = len(Y)
+    trellis = zeros((K, T))
+    # Initialize the first column of the trellis matrix
+    for i in range(K):
+        trellis[i, 0] = pi[i] * Em[i, Y[0]]
         
-        sensor_observations = int(f.readline())
-        observed_values_list = [int(f.readline()) for _ in range(sensor_observations)]
-        error_rate = float(f.readline())
+    
+    # Fill in the rest of the trellis matrix
+    for j in range(1, T):
+        for i in range(K):
+            possible_states = [trellis[k, j-1] * Tm[k, i] * Em[i, Y[j]] for k in range(K)]
+            # print((i,j))
+            # print(possible_states);
+            # print(max(possible_states))
+            trellis[i, j] = max(possible_states)
+    return trellis
+"""Now actually doing everything inshallah"""
+r,c,grid,n,observation_list,epsilon = read_in(input_file)
 
+# now getting the mapping sets
+map_to_idx, idx_to_map = mapping_sets_because_input_grid_is_different_to_trellis_etc(r,c,grid)
 
-        return (rows, cols, grid, observed_values_list, error_rate)
+# now calculating each matrix
+Tm = transition_matrix(map_to_idx, idx_to_map, len(idx_to_map))
+Em = emission_matrix(map_to_idx, idx_to_map, epsilon, len(idx_to_map))
+initial_probabilities = ones(len(idx_to_map)) / len(idx_to_map)
 
+# calculating the trellis matrices
+trellis = viterbi_forward(len(idx_to_map), 16, initial_probabilities, observation_list, Tm, Em)
 
-# the probability function 
-p_x = lambda x, d, e: pow((1-e), 4-d)*pow(e, d) 
+# okay now I need to map the trellis back to the necessary matrix
+maps = []  # List to store map representations
+for t in range(n):
+    map_rep = np.zeros((r, c))
+    for (x, y), i in map_to_idx.items(): # for each traversible point I want the current state's probability
+        map_rep[x, y] = trellis[i, t]
+        # print(trellis[i])
+    maps.append(map_rep)
 
-# the trellis matrix is going to have zeros at all x values - as they are not traversible
-
-# possible directions are north south west east
-possible_directions = [(-1, 0),  (1, 0), (0, -1), (0, 1)] # by adding this to any position in the grid (we get the traversible directions)
-
-def number_of_possible_directions(grid, index_i, index_j)->int:
-    """Function returns the number of possible directions we can move"""
-    traversible_directions = 0
-    for direction in possible_directions:
-        resulting_i = index_i + direction[0]
-        resulting_j = index_j + direction[1]
-
-        if(resulting_j < 0 or resulting_j < 0 or resulting_j >= len(grid[0]) or resulting_i >= len(grid)):
-            continue;
-        else:
-            if(grid[resulting_i][resulting_j] != 'X'):
-                traversible_directions += 1
-    return traversible_directions
-
-
-"""For the algorithm I need to take the transition matrix and emission matrix"""
-
-def viterbi_forward(observations_list: list, error_rate: list, grid: list)->None:
-    """Takes in the observations, error and grid and for each state prints the trellis matrix
-    """
-    # making the trellis matrix
-    trellis = np.zeros((len(grid[0]), len(grid))) # n x m matrix (filled with zeros for non-traversible paths)
-
-
-
-    return None
-
-
-# now we read in the input file
-input_values = read_in(filename=input_file)
-# print(input_values)
-# print(input_values[2])
-# initial matrix is a uniform distribution to 1/k 
-number_of_non_zeros = len([int(i) for j in input_values[2] for i in j if i != 'X'])
-
-original_matrix = list()
-for i in input_values[2]:
-    row = list()
-    for j in i:
-        if(j != 'X'):
-            row.append(float(1/number_of_non_zeros))
-        else:
-            row.append(0)
-    original_matrix.append(row)
-
-
-
-
-# making the transition matrix
-transition_matrix = list()
-for i in range(len(input_values[2])):
-    row = list()
-    for j in range(len(input_values[2][0])):
-        # for each
-        # we now need to find the number of neighbours that are traversible
-        row.append(1/number_of_possible_directions(input_values[2], i, j) if input_values[2][i][j] != 'X' else 0)
-    transition_matrix.append(row)
-
-# Now that we have each matrix I can pass them into the algorithm and do as required
-
-print(transition_matrix)
+# print(maps[0])
+np.savez("output.npz", *maps)
